@@ -93,6 +93,10 @@ class Bird(pg.sprite.Sprite):
             if key_lst[k]:
                 sum_mv[0] += mv[0]
                 sum_mv[1] += mv[1]
+        if key_lst[pg.K_LSHIFT]: #追加機能1
+            self.speed = 20      
+        else:
+            self.speed = 10 
         self.rect.move_ip(self.speed*sum_mv[0], self.speed*sum_mv[1])
         if check_bound(self.rect) != (True, True):
             self.rect.move_ip(-self.speed*sum_mv[0], -self.speed*sum_mv[1])
@@ -141,14 +145,15 @@ class Beam(pg.sprite.Sprite):
     """
     ビームに関するクラス
     """
-    def __init__(self, bird: Bird):
+    def __init__(self, bird: Bird, angle: float = 0.0):
         """
         ビーム画像Surfaceを生成する
         引数 bird：ビームを放つこうかとん
         """
         super().__init__()
         self.vx, self.vy = bird.dire
-        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        base_angle = math.degrees(math.atan2(-self.vy, self.vx))
+        angle = base_angle + angle
         self.image = pg.transform.rotozoom(pg.image.load(f"fig/beam.png"), angle, 1.0)
         self.vx = math.cos(math.radians(angle))
         self.vy = -math.sin(math.radians(angle))
@@ -277,6 +282,29 @@ class Score:
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+class NeoBeam(pg.sprite.Sprite):
+    """
+    弾幕用クラス
+    """
+    
+    def __init__(self, bird: Bird, num: int = 5):
+        super().__init__()
+        self.bird = bird
+        self.num = num
+        self.image = pg.Surface((1, 1), pg.SRCALPHA)
+        self.rect = self.image.get_rect(center=bird.rect.center)
+
+    def gen_beams(self) -> list[Beam]:
+        if self.num <= 1:
+            angles = [0]
+        else:
+            if 100 % (self.num - 1) != 0:
+                raise ValueError("num-1 must divide 100 to use range() step exactly")
+            step = 100 // (self.num - 1)
+            angles = list(range(-50, 51, step))
+
+        return [Beam(self.bird, a) for a in angles]
+
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -299,7 +327,10 @@ def main():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                beams.add(Beam(bird))
+                if key_lst[pg.K_LSHIFT]:
+                    beams.add(NeoBeam(bird, num=5).gen_beams())
+                else:
+                    beams.add(Beam(bird))
             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
                 # 発動条件: リターンキー押下 and スコアが200より大 and 重力場が発動中でない
                 if score.value >= 200 and len(gravitys) == 0:
