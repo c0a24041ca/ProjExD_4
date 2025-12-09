@@ -247,20 +247,22 @@ class NeoBeam(pg.sprite.Sprite):
     弾幕用クラス
     """
     
-    def __init__(self, bird: Bird,num: int = 5, span: float = 50.0):
+    def __init__(self, bird: Bird, num: int = 5):
         super().__init__()
         self.bird = bird
         self.num = num
-        self.span = span
-
         self.image = pg.Surface((1, 1), pg.SRCALPHA)
         self.rect = self.image.get_rect(center=bird.rect.center)
 
-    def update(self) -> list[Beam]:
+    def gen_beams(self) -> list[Beam]:
         if self.num <= 1:
-            angles = [0.0]
+            angles = [0]
         else:
-            angles = [-self.span + i*(2*self.span)/(self.num-1) for i in range(self.num)]
+            if 100 % (self.num - 1) != 0:
+                raise ValueError("num-1 must divide 100 to use range() step exactly")
+            step = 100 // (self.num - 1)
+            angles = list(range(-50, 51, step))
+
         return [Beam(self.bird, a) for a in angles]
 
 
@@ -285,7 +287,7 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 if key_lst[pg.K_LSHIFT]:
-                    beams.add(NeoBeam(bird, num=5).update())
+                    beams.add(NeoBeam(bird, num=5).gen_beams())
                 else:
                     beams.add(Beam(bird))
         screen.blit(bg_img, [0, 0])
